@@ -1,6 +1,6 @@
 use crate::{
     api::{BlogDetail, Visibility},
-    components::{ConfirmDialog, ErrorDialog, LoadingDialog, SuccessDialog},
+    components::{ConfirmDialog, ErrorDialog, LoadingDialog, MarkdownRenderer, SuccessDialog},
     events::Event,
     ui::{FooterBar, MainLayout, TitleBar},
 };
@@ -259,7 +259,17 @@ impl BlogEditPage {
             }
             KeyCode::Down | KeyCode::Char('j') => {
                 if self.focus_area == FocusArea::Content {
-                    self.scroll_offset = self.scroll_offset.saturating_add(1);
+                    // 计算最大滚动位置
+                    let line_count = self.content.lines().count().max(1);
+                    let visible_lines = 20; // 假设可见行数
+                    let max_scroll = if line_count > visible_lines {
+                        line_count - visible_lines
+                    } else {
+                        0
+                    };
+                    if self.scroll_offset < max_scroll {
+                        self.scroll_offset = self.scroll_offset.saturating_add(1);
+                    }
                 }
                 BlogEditAction::None
             }
@@ -573,11 +583,6 @@ impl BlogEditPage {
             PreviewMode::Rendered => "渲染预览",
         };
 
-        let content = match self.preview_mode {
-            PreviewMode::Source => &self.content,
-            PreviewMode::Rendered => &self.content,
-        };
-
         let block = Block::default()
             .title(mode_title)
             .borders(Borders::ALL)
@@ -586,12 +591,34 @@ impl BlogEditPage {
         let inner_area = block.inner(area);
         frame.render_widget(block, area);
 
-        let paragraph = Paragraph::new(content.clone())
-            .style(Style::default().fg(Color::White))
-            .wrap(Wrap { trim: false })
-            .scroll((self.scroll_offset as u16, 0));
+        match self.preview_mode {
+            PreviewMode::Source => {
+                let paragraph = Paragraph::new(self.content.clone())
+                    .style(Style::default().fg(Color::White))
+                    .wrap(Wrap { trim: false })
+                    .scroll((self.scroll_offset as u16, 0));
+                frame.render_widget(paragraph, inner_area);
+            }
+            PreviewMode::Rendered => {
+                // 使用改进的 Markdown 渲染器
+                let rendered = MarkdownRenderer::render(&self.content);
+                let line_count = rendered.lines.len();
+                let visible_lines = inner_area.height as usize;
+                let scroll = self.scroll_offset.min(line_count);
 
-        frame.render_widget(paragraph, inner_area);
+                // 渲染可见行
+                let visible: Vec<_> = rendered
+                    .lines
+                    .iter()
+                    .skip(scroll)
+                    .take(visible_lines)
+                    .cloned()
+                    .collect();
+
+                let text = ratatui::text::Text::from(visible);
+                frame.render_widget(Paragraph::new(text), inner_area);
+            }
+        }
     }
 
     fn char_display_width(c: char) -> usize {
@@ -711,7 +738,10 @@ impl BlogEditPage {
             inner_area.height,
         );
 
-        let line_numbers: Vec<Line> = (1..=line_count)
+        // 只显示可见行的行号，从 scroll_offset 开始
+        let start_line = scroll + 1;
+        let end_line = (scroll + visible_lines).min(line_count);
+        let line_numbers: Vec<Line> = (start_line..=end_line)
             .map(|i| {
                 Line::from(Span::styled(
                     format!("{:>4}", i),
@@ -720,10 +750,10 @@ impl BlogEditPage {
             })
             .collect();
 
-        let line_numbers_widget = Paragraph::new(line_numbers).alignment(Alignment::Right);
+        let line_numbers_widget = Paragraph::new(line_numbers);
         frame.render_widget(
             line_numbers_widget,
-            Rect::new(inner_area.x, inner_area.y, left_width, inner_area.height),
+            Rect::new(inner_area.x, inner_area.y, left_width, visible_lines as u16),
         );
 
         let display_content = if self.content.is_empty() {
@@ -735,7 +765,16 @@ impl BlogEditPage {
                 "按 Tab 切换到内容".to_string()
             }
         } else {
-            self.content.clone()
+            // 只显示从 scroll_offset 开始的行
+            let lines: Vec<&str> = self.content.lines().collect();
+            let visible_content: String = lines
+                .iter()
+                .skip(scroll)
+                .take(visible_lines)
+                .map(|s| *s)
+                .collect::<Vec<_>>()
+                .join("\n");
+            visible_content
         };
 
         let style = if self.content.is_empty() {
@@ -746,8 +785,7 @@ impl BlogEditPage {
 
         let paragraph = Paragraph::new(display_content)
             .style(style)
-            .wrap(Wrap { trim: false })
-            .scroll((scroll as u16, 0));
+            .wrap(Wrap { trim: false });
 
         frame.render_widget(paragraph, text_area);
 
@@ -772,14 +810,18 @@ impl BlogEditPage {
                 char_pos += 1;
             }
 
-            let row = current_row.saturating_sub(scroll);
-            let col = current_col;
+            // 安全检查：确保 row 在可见范围内
+            if current_row >= scroll {
+                let row = current_row - scroll;
+                let col = current_col;
 
-            let cursor_x =
-                text_area.x + (col.min(usize::from(text_area.width).saturating_sub(1)) as u16);
-            let cursor_y =
-                text_area.y + (row.min(usize::from(text_area.height).saturating_sub(1)) as u16);
-            frame.set_cursor_position((cursor_x, cursor_y));
+                let max_y = text_area.height.saturating_sub(1) as usize;
+                let max_x = text_area.width.saturating_sub(1) as usize;
+
+                let cursor_x = text_area.x + (col.min(max_x) as u16);
+                let cursor_y = text_area.y + (row.min(max_y) as u16);
+                frame.set_cursor_position((cursor_x, cursor_y));
+            }
         }
     }
 

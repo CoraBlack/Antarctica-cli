@@ -29,6 +29,8 @@ tokio = { version = "1.43.0", features = ["full"] }
 
 # Markdown处理
 pulldown-cmark = "0.13.0"
+tui-markdown = "0.3"
+ratatui-core = "0.1"
 
 # 配置管理
 dirs = "6.0.0"

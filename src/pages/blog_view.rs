@@ -1,6 +1,6 @@
 use crate::{
     api::{BlogDetail, Visibility},
-    components::{ErrorDialog, LoadingDialog, SuccessDialog},
+    components::{ErrorDialog, LoadingDialog, MarkdownRenderer, SuccessDialog},
     events::Event,
     ui::{FooterBar, MainLayout, TitleBar},
 };
@@ -143,7 +143,6 @@ impl BlogViewPage {
                 } else {
                     ViewMode::Source
                 };
-                self.scroll_offset = 0;
                 BlogViewAction::None
             }
             KeyCode::Down | KeyCode::Char('j') => {
@@ -271,11 +270,6 @@ impl BlogViewPage {
                 ViewMode::Rendered => "渲染模式",
             };
 
-            let content = match self.view_mode {
-                ViewMode::Source => &blog.content,
-                ViewMode::Rendered => &blog.html_content,
-            };
-
             let block = Block::default()
                 .title(mode_title)
                 .borders(Borders::ALL)
@@ -284,24 +278,57 @@ impl BlogViewPage {
             let inner_area = block.inner(area);
             frame.render_widget(block, area);
 
-            let line_count = self.calculate_wrapped_lines(content, inner_area.width);
-            let visible_lines = inner_area.height as usize;
-            self.max_scroll = if line_count > visible_lines {
-                line_count - visible_lines
-            } else {
-                0
-            };
+            match self.view_mode {
+                ViewMode::Source => {
+                    let content = &blog.content;
+                    let line_count = self.calculate_wrapped_lines(content, inner_area.width);
+                    let visible_lines = inner_area.height as usize;
+                    self.max_scroll = if line_count > visible_lines {
+                        line_count - visible_lines
+                    } else {
+                        0
+                    };
 
-            if self.scroll_offset > self.max_scroll {
-                self.scroll_offset = self.max_scroll;
+                    if self.scroll_offset > self.max_scroll {
+                        self.scroll_offset = self.max_scroll;
+                    }
+
+                    let paragraph = Paragraph::new(content.clone())
+                        .style(Style::default().fg(Color::White))
+                        .wrap(Wrap { trim: false })
+                        .scroll((self.scroll_offset as u16, 0));
+
+                    frame.render_widget(paragraph, inner_area);
+                }
+                ViewMode::Rendered => {
+                    // 使用改进的 Markdown 渲染器
+                    let rendered = MarkdownRenderer::render(&blog.content);
+                    let line_count = rendered.lines.len();
+                    let visible_lines = inner_area.height as usize;
+                    self.max_scroll = if line_count > visible_lines {
+                        line_count - visible_lines
+                    } else {
+                        0
+                    };
+
+                    if self.scroll_offset > self.max_scroll {
+                        self.scroll_offset = self.max_scroll;
+                    }
+
+                    // 渲染可见行
+                    let scroll = self.scroll_offset.min(line_count);
+                    let visible_lines: Vec<_> = rendered
+                        .lines
+                        .iter()
+                        .skip(scroll)
+                        .take(visible_lines)
+                        .cloned()
+                        .collect();
+
+                    let text = ratatui::text::Text::from(visible_lines);
+                    frame.render_widget(Paragraph::new(text), inner_area);
+                }
             }
-
-            let paragraph = Paragraph::new(content.clone())
-                .style(Style::default().fg(Color::White))
-                .wrap(Wrap { trim: false })
-                .scroll((self.scroll_offset as u16, 0));
-
-            frame.render_widget(paragraph, inner_area);
         }
     }
 

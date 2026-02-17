@@ -350,6 +350,8 @@ impl App {
                 self.load_latest_blogs().await;
             }
             ProfileAction::NewBlog => {
+                // 重置编辑器状态，避免覆盖旧博客
+                self.blog_edit_page = BlogEditPage::new();
                 self.current_page = Page::BlogEdit;
             }
             ProfileAction::ViewBlog(blog_id) => {
