@@ -12,6 +12,7 @@ use crate::{
     },
 };
 use anyhow::Result;
+use tracing::{info, warn};
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
@@ -111,6 +112,27 @@ impl App {
         // 加载最新博客
         if !is_first_run {
             app.load_latest_blogs().await;
+        }
+
+        // 验证保存的用户信息
+        if let Some(ref user) = app.config.current_user {
+            if let Some(ref token) = app.config.auth_token {
+                // 尝试验证用户是否有效
+                match app.api_client.verify_user(&user.id).await {
+                    Ok(valid_user) => {
+                        info!("用户验证成功: {}", valid_user.username);
+                        // 更新用户信息
+                        app.config.current_user = Some(valid_user);
+                        app.config.save().ok();
+                    }
+                    Err(e) => {
+                        warn!("用户验证失败: {}，清除登录状态", e.user_message);
+                        // 验证失败，清除登录状态
+                        app.config.clear_auth();
+                        app.config.save().ok();
+                    }
+                }
+            }
         }
 
         Ok(app)

@@ -4,11 +4,11 @@ use crate::{
     events::Event,
     ui::{FooterBar, MainLayout, TitleBar},
 };
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     layout::{Alignment, Rect},
-    style::{Color, Modifier, Style},
-    text::{Line, Span, Text},
+    style::Color,
+    style::Style,
     widgets::{Block, Borders, Paragraph, Wrap},
     Frame,
 };

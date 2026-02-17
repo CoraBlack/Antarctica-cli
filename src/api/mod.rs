@@ -157,6 +157,43 @@ impl ApiClient {
         self.auth_token = Some(token);
     }
 
+    /// 验证当前用户是否有效
+    pub async fn verify_user(&self, user_id: &str) -> AppResult<UserInfo> {
+        let url = format!("{}/api/v1/users/me", self.base_url);
+        
+        let request = self.client.post(&url)
+            .json(&serde_json::json!({ "user_id": user_id }))
+            .bearer_auth(self.auth_token.as_deref().unwrap_or(""));
+        
+        let response = request.send().await
+            .map_err(|e| {
+                let err: AppError = e.into();
+                err
+            })?;
+
+        if response.status().is_success() {
+            let api_response: ApiResponse<UserInfo> = response.json().await
+                .map_err(|e| {
+                    let err: AppError = e.into();
+                    err
+                })?;
+            
+            if let Some(data) = api_response.data {
+                Ok(data)
+            } else {
+                Err(AppError::new(ErrorCode::Unauthorized, "验证失败"))
+            }
+        } else {
+            let status = response.status();
+            let err_code = match status.as_u16() {
+                401 | 403 => ErrorCode::Unauthorized,
+                404 => ErrorCode::NotFound,
+                _ => ErrorCode::HttpError,
+            };
+            Err(AppError::new(err_code, err_code.user_message()))
+        }
+    }
+
     /// 登录
     pub async fn login(&self, username: String, password: String) -> AppResult<LoginResponse> {
         let url = format!("{}/api/v1/login", self.base_url);

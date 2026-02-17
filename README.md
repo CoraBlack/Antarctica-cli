@@ -1,50 +1,69 @@
 # Antarctica CLI
 
-一个高度模块化、强可扩展的博客服务器CLI客户端。
+Antarctica CLI - 一个基于终端的博客管理系统客户端，提供现代化的TUI界面。
 
 ## 功能特点
 
-- **高度模块化设计**: 采用模块化架构，各功能模块独立开发，互不影响
-- **强可扩展性**: 通过页面系统轻松添加新功能
-- **配置文件系统**: 支持多服务器配置，方便切换不同服务器
-- **现代化CLI界面**: 使用cliclack提供美观的交互式命令行界面
+- **用户认证**: 登录、注册、退出登录
+- **博客浏览**: 查看最新公开文章，支持源码/渲染模式切换
+- **博客编辑**: Vim-like编辑器，支持Markdown编辑
+- **个人中心**: 管理个人博客文章
+- **现代化UI**: 基于ratatui的终端用户界面
+
+## 界面设计
+
+- 三格高标题栏显示当前界面名称
+- 中间功能区域
+- 三格高辅助栏（左：状态信息，右：操作提示）
+- 按 `?` 键显示帮助面板
 
 ## 项目结构
 
 ```
 antarctica-cli/
 ├── src/
-│   ├── main.rs           # 程序入口
-│   ├── app.rs            # 应用程序主逻辑
-│   ├── error.rs          # 错误处理
-│   ├── config/           # 配置管理模块
-│   │   ├── mod.rs
-│   │   ├── app_config.rs
-│   │   └── server_config.rs
-│   ├── pages/            # 页面模块
-│   │   ├── mod.rs
-│   │   ├── page.rs       # 页面基础trait
-│   │   ├── home.rs       # 首页
-│   │   ├── auth.rs       # 认证页面(登录/注册)
-│   │   └── settings.rs   # 设置页面
-│   └── api/              # API客户端模块
-│       ├── mod.rs
-│       ├── client.rs     # HTTP客户端
-│       ├── auth.rs       # 认证API
-│       └── models.rs     # 数据模型
-├── Cargo.toml            # 项目配置和依赖
-└── README.md             # 项目说明
+│   ├── main.rs              # 程序入口
+│   ├── lib.rs               # 库入口，模块导出
+│   ├── app/
+│   │   └── mod.rs           # 应用程序主逻辑和页面路由
+│   ├── api/
+│   │   └── mod.rs           # API客户端，请求处理
+│   ├── config/
+│   │   └── mod.rs           # 配置管理（服务器地址、用户信息等）
+│   ├── pages/
+│   │   ├── mod.rs           # 页面定义
+│   │   ├── home.rs          # 主页（最新文章列表）
+│   │   ├── login.rs         # 登录页面
+│   │   ├── register.rs      # 注册页面
+│   │   ├── profile.rs       # 个人资料页面
+│   │   ├── blog_view.rs     # 博客预览页面
+│   │   └── blog_edit.rs     # 博客编辑页面
+│   ├── components/
+│   │   ├── mod.rs           # 组件导出
+│   │   └── dialog.rs        # 对话框组件（确认、成功、错误等）
+│   ├── ui/
+│   │   └── mod.rs           # UI组件（布局、标题栏、辅助栏、输入框等）
+│   ├── events/
+│   │   └── mod.rs           # 事件处理
+│   └── utils/
+│       └── mod.rs           # 工具函数（错误定义、错误码等）
+├── Cargo.toml               # 项目配置和依赖
+└── README.md               # 项目说明
 ```
+
+## 依赖
+
+- **ratatui**: TUI框架
+- **crossterm**: 跨平台终端处理
+- **reqwest**: HTTP客户端
+- **tokio**: 异步运行时
+- **pulldown-cmark**: Markdown解析
 
 ## 快速开始
 
-### 安装
+### 编译运行
 
 ```bash
-# 克隆仓库
-git clone https://github.com/yourusername/antarctica-cli.git
-cd antarctica-cli
-
 # 编译项目
 cargo build --release
 
@@ -52,132 +71,83 @@ cargo build --release
 cargo run
 ```
 
-### 配置服务器
+### 首次运行
 
-首次运行时，程序会在设置页面引导您配置服务器：
+首次运行时会提示配置服务器地址：
+- 默认服务器地址: `http://localhost:8080`
+- 配置文件位置: `~/.config/antarctica-cli/config.json`
 
-1. 启动程序
-2. 选择"设置"菜单
-3. 选择"添加服务器"
-4. 输入服务器名称和地址
-5. 选择是否使用HTTPS
-6. 保存配置
+### 界面操作
 
-### 使用说明
+| 按键 | 功能 |
+|------|------|
+| `?` | 显示/隐藏帮助面板 |
+| `q` / `Esc` | 返回上一页 |
+| `Enter` | 确认/选择 |
+| `Tab` | 切换输入框 |
+| `↑/k` | 上移/上滚 |
+| `↓/j` | 下移/下滚 |
 
-程序提供以下主要功能：
+### 主要页面
 
-- **首页**: 应用程序主界面，提供导航菜单
-- **登录**: 登录到博客服务器
-- **注册**: 注册新用户账号
-- **设置**: 配置应用和服务器
+1. **主页**: 显示最新公开博客列表
+   - `l` - 登录
+   - `o` - 个人中心（需登录）
+   - `Enter` - 查看博客详情
+
+2. **登录页**: 用户登录
+   - `Tab` - 切换输入框
+   - `Enter` - 登录
+   - `r` - 跳转注册页
+
+3. **注册页**: 新用户注册
+   - `Tab` - 切换输入框
+   - `Enter` - 注册
+
+4. **个人中心**: 管理我的博客
+   - `n` - 新建博客
+   - `Enter` - 查看/编辑博客
+
+5. **博客预览**: 查看博客内容
+   - `t` - 切换源码/渲染视图
+   - `↑/k` `↓/j` - 滚动
+   - `e` - 编辑（仅自己的博客）
+   - `F10` - 上传发布（仅自己的博客）
+
+6. **博客编辑**: 编辑博客
+   - `i` - 进入/退出编辑模式
+   - `t` - 预览模式
+   - `Tab` - 切换标题/内容焦点
+   - `p` - 切换公开/私有
+   - `Ctrl+S` / `F10` - 保存
+   - `Esc` - 返回（未保存会提示确认）
+
+## 配置文件
+
+- **位置**: `~/.config/antarctica-cli/config.json`
+- **内容**:
+```json
+{
+    "server_url": "http://localhost:8080",
+    "auth_token": null,
+    "current_user": null
+}
+```
 
 ## 开发指南
 
 ### 添加新页面
 
-要添加新页面，需要：
+1. 在 `src/pages/` 创建新页面文件
+2. 实现页面渲染和事件处理
+3. 在 `app/mod.rs` 中添加页面路由
 
-1. 在`src/pages/`目录下创建新页面文件
-2. 实现`Page` trait
-3. 在`src/pages/mod.rs`中注册新页面
-4. 在`app.rs`中注册页面到页面管理器
+### 错误处理
 
-示例：
-
-```rust
-use crate::pages::{Page, PageAction, PageResult};
-use crate::config::AppConfig;
-use anyhow::Result;
-
-pub struct MyPage {
-    name: String,
-    description: String,
-}
-
-impl MyPage {
-    pub fn new() -> Self {
-        Self {
-            name: "my_page".to_string(),
-            description: "我的页面".to_string(),
-        }
-    }
-}
-
-impl Page for MyPage {
-    fn name(&self) -> &str {
-        &self.name
-    }
-
-    fn description(&self) -> &str {
-        &self.description
-    }
-
-    fn render(&self) -> Result<()> {
-        // 渲染页面内容
-        Ok(())
-    }
-
-    fn handle_input(&mut self, input: &str, config: &mut AppConfig) -> PageResult {
-        // 处理用户输入
-        Ok(None)
-    }
-}
-```
-
-### 添加新的API端点
-
-要添加新的API端点，需要：
-
-1. 在`src/api/models.rs`中定义数据模型
-2. 在相应的API模块（如`auth.rs`）中添加API方法
-3. 在`ApiClient`中实现HTTP请求方法
-
-示例：
-
-```rust
-// 在models.rs中定义模型
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MyModel {
-    pub id: String,
-    pub name: String,
-}
-
-// 在client.rs中添加API方法
-impl ApiClient {
-    pub async fn get_my_model(&self, id: &str) -> anyhow::Result<MyModel> {
-        self.get(&format!("/api/v1/my-models/{}", id)).await
-    }
-}
-```
-
-## 配置文件
-
-配置文件位置：
-
-- Windows: `%APPDATA%ntarctica-cli\config.toml`
-- Linux/Mac: `~/.config/antarctica-cli/config.toml`
-
-配置文件示例：
-
-```toml
-version = "0.1.0"
-
-[servers]
-active_server = "my_blog"
-
-[[servers.servers]]
-name = "my_blog"
-url = "blog.example.com"
-secure = true
-api_version = "v1"
-
-[preferences]
-language = "zh-CN"
-theme = "default"
-auto_save = true
-auto_save_interval = 300
-```
+项目使用统一的错误处理系统：
+- `ErrorCode` 定义错误码
+- `AppError` 封装用户友好的错误信息
+- UI层通过对话框组件展示错误
 
 ## 许可证
 

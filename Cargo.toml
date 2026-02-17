@@ -1,7 +1,16 @@
 [package]
 name = "antarctica-cli"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
+authors = ["CocaCora"]
+repository = "https://github.com/CoraBlack/Antarctica-cli.git"
+description = "Antarctica Blog CLI - A terminal-based blog management client"
+
+[package.metadata.wix]
+upgrade-guid = "BC7F47A5-EC48-4DFD-A5D6-0D02F59504AC"
+path-guid = "AA85BC8D-C2B0-4B6D-BD21-BAE303216E07"
+license = false
+eula = false
 
 [dependencies]
 # TUI框架
@@ -47,3 +56,8 @@ rpassword = "7.3.1"
 
 [dev-dependencies]
 tokio-test = "0.4.4"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
