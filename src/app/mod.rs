@@ -281,6 +281,7 @@ impl App {
             }
             LoginAction::Back => {
                 self.current_page = Page::Home;
+                self.load_latest_blogs().await;
             }
             LoginAction::GotoRegister => {
                 self.current_page = Page::Register;
@@ -324,6 +325,7 @@ impl App {
             ProfileAction::None => {}
             ProfileAction::BackToHome => {
                 self.current_page = Page::Home;
+                self.load_latest_blogs().await;
             }
             ProfileAction::NewBlog => {
                 self.current_page = Page::BlogEdit;
@@ -336,6 +338,7 @@ impl App {
                 self.config.save()?;
                 self.api_client = ApiClient::new(&self.config);
                 self.current_page = Page::Home;
+                self.load_latest_blogs().await;
             }
         }
         Ok(())
@@ -347,6 +350,9 @@ impl App {
             BlogViewAction::None => {}
             BlogViewAction::Back => {
                 self.current_page = self.previous_page_before_blog_view;
+                if self.current_page == Page::Home {
+                    self.load_latest_blogs().await;
+                }
             }
             BlogViewAction::EditBlog(blog_id) => {
                 self.goto_blog_edit(Some(blog_id)).await;
